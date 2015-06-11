@@ -1,0 +1,19 @@
+bluepy/
+controller_manager.launch
+hand_open_close.py
+open_close.py
+test_hand.py
+
+
+openhand-software-master/Modified code from debugging/
+openhand-software-master/README.md
+openhand-software-master/dynamixelhandkontrol.py
+openhand-software-master/dynamixelkontrol.py
+openhand-software-master/lib_pololu.py
+openhand-software-master/lib_robotis_mod.pyc
+openhand-software-master/maestrokontrol.py
+openhand-software-master/nanokontrol.py
+openhand-software-master/openhand.pyc
+openhand-software-master/test_main.py
+
+*.swp

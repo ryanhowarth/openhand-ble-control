@@ -1,7 +1,7 @@
 
 
 /*
-
+RFdunio sketch that sends and recevies commands to a dynamixel.
 
 */
 
@@ -14,15 +14,7 @@ int advertisement_led = 3;
 int connection_led = 2;
 
 // The pin to be used for enable/disable signal
-int Txcontrol= 4; 
-
-// Define parameters
-int i = 0;
-byte startAddress;
-
-
-
-
+int txrx_pin= 4; 
 
 void setup() {
   
@@ -35,70 +27,48 @@ void setup() {
   
   // led used to indicate that the RFduino is connected
   pinMode(connection_led, OUTPUT);
-
-  RFduinoBLE.advertisementData = "temp";
-  RFduinoBLE.advertisementData = "-servo";
   
-  delay(1000); //Let dynamixel start up 
+  delay(500); //Let dynamixel start up 
   
-   
-  pinMode(Txcontrol, OUTPUT);
-  digitalWrite(Txcontrol, LOW);
+  // Pin to control direction of information (TX/RX)
+  pinMode(txrx_pin, OUTPUT);
+  digitalWrite(txrx_pin, LOW);
+  
+  //Debugging Pin
   pinMode(6, OUTPUT);
+  
+  //Start Serial Connection
   Serial.begin(9600);
   
   // start the BLE stack
   RFduinoBLE.begin();
 }
 
-unsigned int hexToDec(String hexString) {
-  
-  unsigned int decValue = 0;
-  int nextInt;
-  
-  for (int i = 0; i < hexString.length(); i++) {
-    
-    nextInt = int(hexString.charAt(i));
-    if (nextInt >= 48 && nextInt <= 57) nextInt = map(nextInt, 48, 57, 0, 9);
-    if (nextInt >= 65 && nextInt <= 70) nextInt = map(nextInt, 65, 70, 10, 15);
-    if (nextInt >= 97 && nextInt <= 102) nextInt = map(nextInt, 97, 102, 10, 15);
-    nextInt = constrain(nextInt, 0, 15);
-    
-    decValue = (decValue * 16) + nextInt;
-  }
-  
-  return decValue;
-}
-
-
-
 void loop() {
-  String stringRead;
-  byte byteRead;
-  if (Serial.available()) {
-    stringRead = Serial.readString(); 
+  //No delay (Constantly Looping)
+  RFduino_ULPDelay(0);
+ 
+  //Reads commands from Dynamixel and sends them over BLE to Laptop
+  if (Serial.available() > 0) {
+    digitalWrite(txrx_pin, LOW);
+    char testRead[8] = {};
+    char data = testRead[0];
+    Serial.readBytes(testRead, 8);
+    
+    for (int j = 0; j < sizeof(testRead); j++) {
+      int f  = int(testRead[j]);
+      if (f == 1) {
+        data = testRead[j+3];
+      }
+    }
+    
+    RFduinoBLE.send(testRead, 8);
   }
-  
-  byte ff = '\x0d';
-  String test = String(ff, DEC);
-  int aa = test.toInt();
-  
-  Serial.println(aa);
-  
-  //float temp = byteRead;
-  float temp = aa;
-  
-  //const char *hexstring[4];
-  //float temp = (float)strtol(hexstring, NULL, 0);
-  
+
   // switch to lower power mode
   //RFduino_ULPDelay(INFINITE);
-    // sample once per second
+  // sample once per second
   //RFduino_ULPDelay( SECONDS(1) );
-  //float temp = RFduino_temperature(CELSIUS);
-  //Serial.println(temp);
-  // send the sample to the iPhone
-  RFduinoBLE.sendFloat(temp);
 }
 
 void RFduinoBLE_onAdvertisement(bool start)
@@ -122,142 +92,24 @@ void RFduinoBLE_onDisconnect()
   digitalWrite(connection_led, LOW);
 }
 
-
-
+/*
+  Recevies Commands from Computer and Sends them to Dynamixel
+*/
 void RFduinoBLE_onReceive(char *data, int len)
 {
   
-  //Turns tx pin to High at start of packet and Low at end
-  if (len == 4) {
-    digitalWrite(Txcontrol, HIGH);
-    digitalWrite(6, !digitalRead(6));
-    //delay(1);    
-    //return;
-
-  }
-  else if (len == 5){
-    delay(3); //Allow last byte to get through
-    digitalWrite(Txcontrol, LOW);
-    digitalWrite(6, !digitalRead(6));
-    //delay(1);
-    //return;
-  }
-  else {
-    digitalWrite(Txcontrol, HIGH);
-    char control[len];
-    for (int i =0; i < len; i++) {
-      control[i] = data[i];
-    }
-    delay(1);
-    byte hex_byte = '\x00' + atoi(control);
-    Serial.write(hex_byte);
-  }
-  
-  //Serial.println( atoi(data)  + 5 );
-  /*
-  if (data[0] == '1')
-  {
-    
-    moveServos();
-    //digitalWrite(4, HIGH);
-  }
-  else if (data[0] == '0')
-  {
-    digitalWrite(4, LOW);
-  }*/
-}
-
-
-
-void moveServos (){
-   byte servoID= '\x01';
-   byte start_char = '\xFF';
-   byte write_cmd = '\x03';
-   byte led_control = '\x19';
-    
- 
-   digitalWrite(Txcontrol,HIGH);   // Notify max485 transciever to accept tx 
-   digitalWrite(6, HIGH);
-   delay(1);                 // Allow this to take effect
-  
-   byte test  = '\x00' + 255;
-   
-   Serial.write(test);  // 1.These 2 bytes are 'start message'
-   delay(1);
-   Serial.write(start_char);  // 2.These 2 bytes are 'start message'
-   delay(1);
-   Serial.write(servoID);  // 3.Address 1 is target servo or 0xfe which is broadcast mode
-   delay(1);
-   Serial.write('\x04');  // 4.Length of string
-   delay(1);
-   Serial.write(write_cmd);  // 5.Ping read write or syncwrite 0x01,2,3,83
-   delay(1);
-   Serial.write(led_control);  // 6.Start address for data to be written
-   delay(1);
-   Serial.write('\x01');  //  7.Turning on signal
-   delay(1);
-   //Serial.write( byte(0x00) ); // In C, '0' as naked constant can be many things. Need to cast as byte
-   Serial.write('\xDD'); //8. the notchecksum
-   delay(3);
-  
-   digitalWrite(Txcontrol, LOW);
-   digitalWrite(6, LOW);
-   /*
-   printHex(255, 2);
-   delay(10);
-   printHex(255, 2);
-   delay(10);
-   
-   printHex(1, 2);
-   delay(10);
-   printHex(4, 2);
-   delay(10);
-   
-   printHex(3, 2);
-   delay(10);
-   printHex(25, 2);
-   delay(10);
-   printHex(1, 2);
-   delay(10);
-   
-   printHex(221, 2);
-   delay(10);*/
-   
-   /*
-   Serial.write(start_char);  // 1.These 2 bytes are 'start message'
-   Serial.write(start_char);  // 2.These 2 bytes are 'start message'
-   Serial.write(servoID);  // 3.Address 1 is target servo or 0xfe which is broadcast mode
-   Serial.write(0x05);  // 4.Length of string
-   Serial.write(write_cmd);  // 5.Ping read write or syncwrite 0x01,2,3,83
-   Serial.write(0x22);  // 6.Start address for data to be written
-   Serial.write(0xCC);  //  7.Turning on signal
-   Serial.write( byte(0x00) ); // In C, '0' as naked constant can be many things. Need to cast as byte
-   Serial.write(0x08); //8. the notchecksum
-   
+   digitalWrite(txrx_pin, HIGH);
    delay(50);
- 
-   Serial.write(start_char);  // 1.These 2 bytes are 'start message'
-   Serial.write(start_char);  // 2.These 2 bytes are 'start message'
-   Serial.write(servoID);  // 3.Address 1 is target servo or 0xfe which is broadcast mode
-   Serial.write(0x05);  // 4.Length of string
-   Serial.write(write_cmd);  // 5.Ping read write or syncwrite 0x01,2,3,83
-   Serial.write(0x0E);  // 6.Start address for data to be written
-   Serial.write(0xCC);  //  7.Turning on signal
-   Serial.write( byte(0x00) ); // In C, '0' as naked constant can be many things. Need to cast as byte
-   Serial.write(0x1C); //8. the notchecksum
- 
-   delay(50);
- 
-   Serial.write(start_char);  // 1.These 2 bytes are 'start message'
-   Serial.write(start_char);  // 2.These 2 bytes are 'start message'
-   Serial.write(servoID);  // 3.Address 1 is target servo or 0xfe which is broadcast mode
-   Serial.write(0x05);  // 4.Length of string
-   Serial.write(write_cmd);  // 5.Ping read write or syncwrite 0x01,2,3,83
-   Serial.write(0x1E);  // 6.Start address for data to be written
-   Serial.write(0xD8);  //  7.Turning on signal
-   Serial.write(0x0C);
-   Serial.write(0xF4); //8. the notchecksum
-   */
+   uint8_t a = data[0];
+   for (int i = 0; i < len; i++) {
+     a = data[i];
+     int b = int(a);
+     byte hex_byte = '\x00' + b;
+     delay(1); // Need spacing between bytes for some reason?
+     Serial.write(hex_byte);
+   }
+   delay(3); //Allow last bytes to go through before switching to RX
+   digitalWrite(txrx_pin, LOW);
 }
   
 

@@ -4,6 +4,7 @@ hand_open_close.py
 open_close.py
 test_hand.py
 
+pybluez/
 
 openhand-software-master/Modified code from debugging/
 openhand-software-master/README.md
@@ -17,3 +18,4 @@ openhand-software-master/openhand.pyc
 openhand-software-master/test_main.py
 
 *.swp
+*.lprof

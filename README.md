@@ -13,12 +13,15 @@ Using pip:
 ```shell
 pip install pygatt
 ```
+In order to work properly, the pygatt source need to be edited so gatttool works with random device types. 
 
-Bluez version > 5.5 is needed for pygatt. This must be installed from source on Ubuntu. Download: http://www.bluez.org/download/
+Bluez version > 5.5 is needed for pygatt. This must be installed from source on Ubuntu. Instructions are below. Download: http://www.bluez.org/download/
+
+ Remove Bluez 4.101 and related packages using synaptic.
 
  Install Dependencies:
 ```shell
-sudo apt-get install libglib2.0-dev libdbus-1-dev libusb-dev libudev-dev libical-dev systemd libreadline-dev
+sudo apt-get install libglib2.0-dev libdbus-1-dev libusb-dev libudev-dev libical-dev libreadline-dev
 ```
 
  Run Configuration Script:

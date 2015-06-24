@@ -25,7 +25,7 @@ class BLE_Hand_Control():
     close_hand = [3, 30, 111, 11]
     open_hand = [3, 30, 36, 4]
     set_torque = [3, 34, 0, 0]
-
+    set_torque_eeprom = [3, 14, 0, 0]
     def __init__(self, mac_addr = 'D4:A8:08:F5:B8:0D', dev = 'hci1'):
         #Start BLE Connection.
         pygatt.util.reset_bluetooth_controller()
@@ -76,7 +76,9 @@ class BLE_Hand_Control():
         torque_val = min(int(float(val)/100 * 1024), 1024) #percentage to dynamixel scale (0 - 1024)
         hi,lo = torque_val / 256, torque_val % 256
         self.set_torque[2:4] = [lo, hi]
+        self.set_torque_eeprom[2:4] = [lo, hi]
         self.send_packet(self.set_torque)
+        self.send_packet(self.set_torque_eeprom)
     
     #Takes command and appends the start address, servo ID, and checksum.
     #Then sends it to the rf duino

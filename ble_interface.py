@@ -56,6 +56,8 @@ class BLE_Hand_Control():
             i += 1
             time.sleep(.1)
         print(' ')
+        print("Packet received: " + str(test_array))
+        print(' ')
         return self._get_value(test_array)
 
     #Caulatates Checksum before sendings commands to dynamixel.

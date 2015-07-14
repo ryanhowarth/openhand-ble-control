@@ -50,17 +50,17 @@ void loop() {
  
   //Reads commands from Dynamixel and sends them over BLE to Laptop
   if (Serial.available() > 0) {
-    digitalWrite(txrx_pin, LOW);
+    digitalWrite(txrx_pin, LOW); //Switch to receive data from dynamixel 
     char testRead[8] = {};
-    char data = testRead[0];
+    //char data = testRead[0];
     Serial.readBytes(testRead, 8);
     
-    for (int j = 0; j < sizeof(testRead); j++) {
+    /*for (int j = 0; j < sizeof(testRead); j++) {
       int f  = int(testRead[j]);
       if (f == 1) {
         data = testRead[j+3];
       }
-    }
+    }*/
     
     RFduinoBLE.send(testRead, 8);
   }
@@ -102,9 +102,7 @@ void RFduinoBLE_onReceive(char *data, int len)
    delay(50);
    uint8_t a = data[0];
    for (int i = 0; i < len; i++) {
-     a = data[i];
-     int b = int(a);
-     byte hex_byte = '\x00' + b;
+     byte hex_byte = '\x00' + int(data[i]);
      delay(1); // Need spacing between bytes for some reason?
      Serial.write(hex_byte);
    }

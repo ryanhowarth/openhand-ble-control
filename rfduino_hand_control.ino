@@ -98,15 +98,15 @@ void RFduinoBLE_onDisconnect()
 void RFduinoBLE_onReceive(char *data, int len)
 {
   
-   digitalWrite(txrx_pin, HIGH);
-   delay(50);
+   digitalWrite(txrx_pin, HIGH); //Switch to TX mode before sending data
+   delay(10);                    //Allow this to take effect
    uint8_t a = data[0];
    for (int i = 0; i < len; i++) {
      byte hex_byte = '\x00' + int(data[i]);
      delay(1); // Need spacing between bytes for some reason?
      Serial.write(hex_byte);
    }
-   delay(3); //Allow last bytes to go through before switching to RX
+   delayMicroseconds(1200); //Allow last bit to go through before switching to RX (at 9600 baud)
    digitalWrite(txrx_pin, LOW);
 }
   

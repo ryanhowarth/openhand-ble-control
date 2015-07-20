@@ -16,8 +16,9 @@ int connection_led = 2;
 // The pin to be used for enable/disable signal
 int txrx_pin = 4;
 
-// Debug pin
+// Debug pins
 int debug = 6;
+int debugtwo = 5;
 
 //Detmines whether the hand is currently closing.
 boolean closing =  false;
@@ -40,8 +41,9 @@ void setup() {
   pinMode(txrx_pin, OUTPUT);
   digitalWrite(txrx_pin, LOW);
 
-  //Debugging Pin
+  //Debugging Pins
   pinMode(debug, OUTPUT);
+  pinMode(debugtwo, OUTPUT);
 
   //Start Serial Connection
   Serial.begin(9600);
@@ -56,14 +58,18 @@ void loop() {
   //No delay (Constantly Looping)
   RFduino_ULPDelay(0);
 
+  //Better to start the control loop here than in the interupt function.
+  if (closing)
+  {
+    control_loop();
+  }
+
   //Reads commands from Dynamixel and sends them over BLE to Laptop
-  if (Serial.available() > 0) {
+  if (Serial.available() > 0 && !closing ) {
     digitalWrite(txrx_pin, LOW); //Switch to receive data from dynamixel
-    char testRead[8] = {};
-    //char data = testRead[0];
-    Serial.readBytes(testRead, 8);
-    get_value(testRead);
-    RFduinoBLE.send(testRead, 8);
+    char dataRead[8] = {};
+    Serial.readBytes(dataRead, 8);
+    RFduinoBLE.send(dataRead, 8);
   }
 
   // switch to lower power mode
@@ -72,6 +78,34 @@ void loop() {
   //RFduino_ULPDelay( SECONDS(1) );
 }
 
+//Monitors position and/or load on the hand while the hand is closing or opening. 
+void control_loop()
+{
+  while (closing)
+  {
+    check_speed();
+    delay(25); //Weird behavior without this delay
+    if (Serial.available() > 0) {
+      digitalWrite(txrx_pin, LOW);
+      char dataRead[8] = {};
+      Serial.readBytes(dataRead, 8);
+
+      int speed_val = get_value(dataRead);
+      if (speed_val < 5)
+      {
+        digitalWrite(debugtwo, !digitalRead(debugtwo));
+        closing = false;
+      }
+      else if (speed_val > 5) {
+        digitalWrite(debug, !digitalRead(debug));
+      }
+      delay(25);
+    }
+  }
+
+}
+
+//Take packets and return the relevent information. (Even if some of beginning bytes are missing).
 int get_value(char *dataRead)
 {
   int servo_id = 1;
@@ -79,7 +113,7 @@ int get_value(char *dataRead)
     int value  = int(dataRead[i]);
     if (value == servo_id) {
       int data = int(dataRead[i + 3]);
-      if (data > 20 && data < 30) {
+      if (data > 20) {
         //digitalWrite(debug, HIGH);
       }
       return data;
@@ -90,9 +124,8 @@ int get_value(char *dataRead)
 
 void RFduinoBLE_onAdvertisement(bool start)
 {
-  // turn the green led on if we start advertisement, and turn it
+  // turn the red led on if we start advertisement, and turn it
   // off if we stop advertisement
-
   if (start)
     digitalWrite(advertisement_led, HIGH);
   else
@@ -111,6 +144,7 @@ void RFduinoBLE_onDisconnect()
 
 /*
   Recevies Commands from Computer and Sends them to Dynamixel
+  This is an interrupt function. Strange things occur if program spends too much time in here.
 */
 void RFduinoBLE_onReceive(char *data, int len)
 {
@@ -119,26 +153,20 @@ void RFduinoBLE_onReceive(char *data, int len)
   byte hex_byte[len];
   for (int i = 0; i < len; i++) {
     hex_byte[i] = '\x00' + int(data[i]);
-
   }
-  if (int(data[5]) == 40) {
-    digitalWrite(debug, HIGH);
+
+  if (int(data[5]) == 30) {
+    send_to_servo(hex_byte, len);
+    check_speed();
+    //digitalWrite(debug, HIGH);
+    closing = true;
+
+    //digitalWrite(debug, HIGH);
   }
   else
   {
     send_to_servo(hex_byte, len);
   }
-
-  /*
-  digitalWrite(txrx_pin, HIGH); //Switch to TX mode before sending data
-  delay(10);                    //Allow this to take effect
-  for (int i = 0; i < len; i++) {
-    byte hex_byte = '\x00' + int(data[i]);
-    delay(1); // Need spacing between bytes for some reason?
-    Serial.write(hex_byte);
-  }
-  delayMicroseconds(1200); //Allow last bit to go through before switching to RX (at 9600 baud)
-  digitalWrite(txrx_pin, LOW);*/
 }
 
 void send_to_servo(byte *data, int len)
@@ -157,6 +185,12 @@ void check_load()
 {
   byte load_packet[] = {'\xff', '\xff', '\x01', '\x04', '\x02', '\x28', '\x02', '0xCE'};
   send_to_servo(load_packet, sizeof(load_packet) / sizeof(byte) );
+}
+
+void check_speed()
+{
+  byte speed_packet[] = {'\xff', '\xff', '\x01', '\x04', '\x02', '\x26', '\x02', '\xD0'};
+  send_to_servo(speed_packet, sizeof(speed_packet) / sizeof(byte) );
 }
 
 

@@ -22,7 +22,8 @@ class BLE_Hand_Control():
     temperature = [2, 43, 1] 
     load = [2, 40, 2]
     position = [2, 36, 2]
-    close_hand = [3, 30, 111, 11]
+    speed = [2, 38, 2]
+    close_hand = [3, 30, 0, 13]
     open_hand = [3, 30, 36, 4]
     set_torque = [3, 34, 0, 0]
     set_torque_eeprom = [3, 14, 0, 0]
@@ -36,7 +37,7 @@ class BLE_Hand_Control():
     #Reads data out of incoming packets.
     #@profile
     def _get_value(self, data):
-        for i in range(10):
+        for i in range(8):
             if (int(data[i]) == 1):
                 return data[ (i+3) ]
         return -1
@@ -89,6 +90,8 @@ class BLE_Hand_Control():
         cmd_length = [len(command) + 1]
         packet = start_address + self.servo_id + cmd_length + command
         packet = packet + self._calc_checksum(packet[2:])
+        print (packet)
+        print (str(packet))
         self.ble.char_write(0x0011, bytearray(packet))
 
     #Prints all possible commands to command line.
@@ -102,6 +105,7 @@ class BLE_Hand_Control():
         print('     t,       Read the Temperature of Dynamixel')
         print('     l,       Read the Load of Dynamixel')
         print('     t,       Read the Position of Dynamixel')
+        print('     v,       Read the Speed of Dynamixel')
         print('     quit,    Disconnect Bluetooth connection and end script')
         print('     help,    Print all commands')
         print(' ')
@@ -130,6 +134,10 @@ class BLE_Hand_Control():
                     print("------Reading the Temp--------")
                     self.send_packet(self.temperature)
                     print 'Temp: ' + str(self.read_from_rf())
+                elif (input_str == 'v'):
+                    print("------Reading the Speed--------")
+                    self.send_packet(self.speed)
+                    print 'Speed: ' + str(self.read_from_rf())
             
                 elif (input_str == 'o'):
                     print("------Opening the Hand--------")

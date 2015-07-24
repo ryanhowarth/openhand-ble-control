@@ -23,8 +23,9 @@ class BLE_Hand_Control():
     load = [2, 40, 2]
     position = [2, 36, 2]
     speed = [2, 38, 2]
-    close_hand = [3, 30, 0, 13]
-    open_hand = [3, 30, 36, 4]
+    #close_hand = [3, 71, 100, 5]
+    close_hand = [3, 30, 0, 7]
+    open_hand = [3, 30, 0, 1]
     set_torque = [3, 34, 0, 0]
     set_torque_eeprom = [3, 14, 0, 0]
     def __init__(self, mac_addr = 'D4:A8:08:F5:B8:0D', dev = 'hci1'):

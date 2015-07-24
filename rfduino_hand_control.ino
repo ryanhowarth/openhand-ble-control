@@ -14,11 +14,11 @@ int advertisement_led = 3;
 int connection_led = 2;
 
 // The pin to be used for enable/disable signal
-int txrx_pin = 4;
+int txrx_pin = 6;
 
 // Debug pins
-int debug = 6;
-int debugtwo = 5;
+int debug = 4;
+int debugtwo = 3;
 
 //Detmines whether the hand is currently closing.
 boolean closing =  false;
@@ -155,11 +155,14 @@ void RFduinoBLE_onReceive(char *data, int len)
     hex_byte[i] = '\x00' + int(data[i]);
   }
 
-  if (int(data[5]) == 30) {
+  if (int(data[5]) == 71) {
+    enable_torque_mode();
+    delay(250);
     send_to_servo(hex_byte, len);
-    check_speed();
-    //digitalWrite(debug, HIGH);
-    closing = true;
+    delay(250);
+    disable_torque_mode();    
+    digitalWrite(debug, HIGH);
+    //closing = true;
 
     //digitalWrite(debug, HIGH);
   }
@@ -193,4 +196,28 @@ void check_speed()
   send_to_servo(speed_packet, sizeof(speed_packet) / sizeof(byte) );
 }
 
+void enable_torque_mode()
+{
+  byte torque_packet[] = {'\xff', '\xff', '\x01', '\x04', '\x03', '\x46', '\x01', '\xAD'};
+  send_to_servo(torque_packet, sizeof(torque_packet) / sizeof(byte) );
+}
+
+void disable_torque_mode()
+{
+  byte torque_packet[] = {'\xff', '\xff', '\x01', '\x04', '\x03', '\x46', '\x00', '\xAE'};
+  send_to_servo(torque_packet, sizeof(torque_packet) / sizeof(byte) );
+}
+
+
+//Not Tested
+int calc_checksum(byte msg[])
+{
+  byte checksum = 0;
+  int len = sizeof(msg) / sizeof(byte);
+  for(int i = 0; i < len; i++) {
+    checksum += msg[i];
+  }
+  checksum = (~checksum) % 256;
+  
+}
 

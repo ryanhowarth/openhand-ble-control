@@ -20,89 +20,95 @@ void setup() {
     //delay(25000);
     digitalWrite(led, HIGH);
     delay(3000);
-    //Spark.variable("temperature", &temperature, INT);
-    //pinMode(A0, INPUT)
+    Serial.print('\n');
+    connect();
     
-    //digitalWrite(led, HIGH);
     
+}
+
+//Connects To TCP Server
+void connect() {
     if (client.connect(server, 1234))
     {
         Serial.println("connected");
-        //client.println("GET /search?q=unicorn HTTP/1.0");
-        //client.println("Host: www.google.com");
-        //client.println("Content-Length: 0");
-        //client.println();
+        digitalWrite(led, LOW);
     }
     else
     {
         Serial.println("connection failed");
     }
-    
-    //delay(7000);
-    //delay(7000);
-    //delay(7000);
-    //delay(7000);
-    //digitalWrite(led, HIGH);
-    
     Serial.println('Starting the Server');
-    digitalWrite(led, LOW);
-    
-    
-
-    IPAddress localIP = WiFi.localIP();
-    Serial.print(localIP);
-    Serial.print('\n');
     
     
 }
 
+
+
+//Passing alongs packets between computer and dynamixel
 void loop() {
     
     //client = server.available();
     if (client.available()) {
-        char c = client.read();
-        Serial.print(c);
+        int len = client.available();
         
-        byte led_on[] = {'\xff', '\xff', '\x01', '\x04', '\x03', '\x19', '\x01', '\xDD'};
-        digitalWrite(txrx_pin, HIGH);
-        delay(50);                    //Allow this to take effect
-        for (int i = 0; i < 8; i++) {
-            delay(1); // Need spacing between bytes for some reason?
-            Serial1.write(led_on[i]);
+        Serial.println("Serial.availible(): ");
+        Serial.println(len);
+        
+        byte hex_byte[len];
+        for (int i = 0; i < len; i++) {
+            uint8_t data = client.read();
+            hex_byte[i] = '\x00' + int(data);
         }
-        //delayMicroseconds(1200); //Allow last bit to go through before switching to RX (at 9600 baud)
+
         
-        delay(50);
-        digitalWrite(txrx_pin, LOW);
+        digitalWrite(txrx_pin, HIGH);
+        delay(10);
+        //Serial1.write(hex_byte[0]);
+
+        for (int i = 0; i < len; i++) {
+            delay(2); // Need spacing between bytes for some reason?
+            Serial1.write(hex_byte[i]);
+            //Serial.print(hex_byte[i]);
+            
+        }
+        delayMicroseconds(1200); //Allow last bit to go through before switching to RX (at 9600 baud)
+        read_data();
         
-        
-        
-        
-        
-        char msg = 'a';
-        client.write(msg);
-        //digitalWrite(led, HIGH);
-        //Serial.print("Client Found");
+
+    }
+    //check_connection();
+
+
+}
+//Reads data from the dyanmixel.
+void read_data() {
+    digitalWrite(txrx_pin, LOW);
+    delay(10);
+    Serial.print("Ser1.aval: ");
+    Serial.println(Serial1.available());
+    if (Serial1.available() > 0) {
+        while(Serial1.available() > 0) {
+            byte x = Serial1.read();
+            client.write(x);
+            Serial.print(x);
+            
+        }
     }
     
-    
-    
-    
-    
-    /*
-    digitalWrite(led, HIGH);
-    delay(1000);
-    digitalWrite(led, LOW);
-    delay(1000);
-    temperature += 1;
-    */
-    //Serial.print("Test Print");
-    //delay(2000);
-    //Serial.print('\n');
 }
 
 
-
+void check_connection() {
+    //client.flush();
+    //client.read();
+    
+    if (!client.connected()) {
+        Serial.print("Client.connected: ");
+        Serial.println(client.connected());
+        client.stop();
+        connect();
+    }
+}
 
 
 

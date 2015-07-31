@@ -1,34 +1,29 @@
-//SYSTEM_MODE(MANUAL); //Disables automatic cloud connection.
+//SYSTEM_MODE(SEMI_AUTOMATIC); //Disables automatic cloud connection.
 
 
-
-//TCPServer server = TCPServer(12345);
-TCPClient client;
+TCPClient tcp_client;
 byte server[] = { 192, 168, 0, 105 }; // From DHCP on macbook. Could change
-
+int port = 1234;
 int led = D2;
 int txrx_pin = D3;
-int temperature = 0;
-
 
 void setup() {
+    //WiFi.on();
+    //WiFi.connect();
+    
     pinMode(led, OUTPUT);
-    pinMode(txrx_pin, OUTPUT);
+    pinMode(txrx_pin, OUTPUT); //Controls direction of serial comms dyanmixel.
     Serial.begin(9600);
     Serial1.begin(9600);
-    
-    //delay(25000);
+
     digitalWrite(led, HIGH);
     delay(3000);
-    Serial.print('\n');
     connect();
-    
-    
 }
 
 //Connects To TCP Server
 void connect() {
-    if (client.connect(server, 1234))
+    if (tcp_client.connect(server, port))
     {
         Serial.println("connected");
         digitalWrite(led, LOW);
@@ -42,77 +37,40 @@ void connect() {
     
 }
 
-
-
 //Passing alongs packets between computer and dynamixel
 void loop() {
-    
-    //client = server.available();
-    if (client.available()) {
-        int len = client.available();
+
+    if (tcp_client.available()) {
+
+        dynamixel_send();
         
-        Serial.println("Serial.availible(): ");
-        Serial.println(len);
-        
-        byte hex_byte[len];
-        for (int i = 0; i < len; i++) {
-            uint8_t data = client.read();
-            hex_byte[i] = '\x00' + int(data);
-        }
-
-        
-        digitalWrite(txrx_pin, HIGH);
-        delay(10);
-        //Serial1.write(hex_byte[0]);
-
-        for (int i = 0; i < len; i++) {
-            delay(2); // Need spacing between bytes for some reason?
-            Serial1.write(hex_byte[i]);
-            //Serial.print(hex_byte[i]);
-            
-        }
-        delayMicroseconds(1200); //Allow last bit to go through before switching to RX (at 9600 baud)
-        read_data();
-        
-
-    }
-    //check_connection();
-
-
-}
-//Reads data from the dyanmixel.
-void read_data() {
-    digitalWrite(txrx_pin, LOW);
-    delay(10);
-    Serial.print("Ser1.aval: ");
-    Serial.println(Serial1.available());
-    if (Serial1.available() > 0) {
-        while(Serial1.available() > 0) {
-            byte x = Serial1.read();
-            client.write(x);
-            Serial.print(x);
-            
-        }
-    }
-    
-}
-
-
-void check_connection() {
-    //client.flush();
-    //client.read();
-    
-    if (!client.connected()) {
-        Serial.print("Client.connected: ");
-        Serial.println(client.connected());
-        client.stop();
-        connect();
+        dyanmixel_read();
     }
 }
 
+//Receives data from the tcp server and sends it to dynamixel.
+void dynamixel_send() {
+    digitalWrite(txrx_pin, HIGH); //Switch to tx to write packet to dynamixel.
+    delay(2); //Allow this to take effect
+    while(tcp_client.available()) {
+        byte data = int(tcp_client.read()) + '\x00';
+        delayMicroseconds(1500); // Need spacing between bytes for some reason?
+        Serial1.write(data);
+    }
+    delayMicroseconds(1200); //Allow last bit to go through before switching to RX (at 9600 baud)
+}
 
 
-
-
-
+//Reads data from the dyanmixel and sends it to computer over tcp.
+void dyanmixel_read() {
+    digitalWrite(txrx_pin, LOW); //Switch to rx to receive packet back from dynamixel.
+    delay(10);// wait for response from dynamixel before reading from serial.
+    while(Serial1.available() > 1) {
+        byte x = Serial1.read();
+        tcp_client.write(x);
+        Serial.print(x);
+    }
+    Serial1.read(); //Read stopbit out of buffer but don't send to server.
+    
+}
 

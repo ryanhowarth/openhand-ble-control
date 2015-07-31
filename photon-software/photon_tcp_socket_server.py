@@ -3,9 +3,7 @@
 import socket
 import time
 import datetime
-import threading
-
-
+import select
 
 
 
@@ -14,84 +12,76 @@ class photon_tcp_socket_server():
     s = []
     addr = []
     conn = []
-    led_on = [255, 255, 1, 4, 3, 25, 1, 221]
-    led_off = [255, 255, 1, 4, 3, 25, 0, 222]
-    get_temp = [255, 255, 1, 4, 2, 43, 1, 204] 
-    connected = True
+    ready_to_recv = []
+    timeout_in_seconds = 1000
+    connected = False
     def __init__(self, port=1234, local_ip='192.168.0.105'):
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        host = socket.gethostname()
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Initialize socket server
+        self.s.setblocking(0) #Set to non blocking. Send and recv calls will throw error if not immediately availible
         self.s.bind((local_ip, port))
         print ''
         print 'Opened TCP Socket on port:', port,'. Listening for clients: '
         self.s.listen(5)
         self.connect()
 
+    #@profile
     def connect(self):
+        self.ready_to_recv = select.select([self.s], [], [], self.timeout_in_seconds)
         while True:
-            self.conn, self.addr = self.s.accept()
-            print 'Got connection from', self.addr
-            connected = True
-            return
+            if self.ready_to_recv[0]:
+                self.conn, self.addr = self.s.accept()
+                self.connected = True
+                print 'Got connection from', self.addr
+                return
     
+    #@profile
     def close_connection(self):
         self.conn.close()
+        self.connected = False
         print 'Closing the connection.'
         print ''
         print 'Listening for clients: '
         self.connect()
 
+    #@profile
     def close_server(self):
         print 'Closing the TCP Server'
+        self.s.shutdown(socket.SHUT_RDWR)
         self.s.close()
     
+    #@profile
     def send(self, msg):
         
-        try:
-            if not self.connected:
-                return False
-            self.conn.send(bytearray(msg))
-            time.sleep(0.1) #pause to allow dyanmixel to send message back
-            recv_array = self.conn.recv(1024)
-            recv_array = [ord(i) for i in recv_array]
-            print recv_array
-            return recv_array
-        except:
-            print 'Inspect if gets here'
+        #try:
+        if not self.connected:
+            return False
+        self.conn.send(bytearray(msg))
+        return self._receive()
     
-    def run(self, msg):
-        input_str = raw_input('Enter Message: ')
-        try:
-            while (input_str != 'q'):
-                if (input_str == '1'):
-                    conn.send(bytearray(self.led_on))
-                elif (input_str == 't'):
-                    conn.send(bytearray(self.get_temp))
-                else:
-                    conn.send(bytearray(self.led_off))
-                time.sleep(0.1) #pause to allow dyanmixel to send message back
-                print 'Attempting to receive return packet.'
-                msg = conn.recv(1024)
-                for i in msg:
-                    print ord(i)
-                print 'msg: ', msg
-                input_str = raw_input('Enter Message: ')
-        finally:
-            #conn.send('0')
-            #conn.close()
-            print 'Closing the connection.'
-            conn.close()
-            print ''
-            print 'Listening for another client: '
-
-
-
-#x = photon_tcp_socket_server()
-#x.run()
-
-
-
-
+    #@profile
+    def _receive(self):
+        done = False
+        recv_array = []
+        if self.ready_to_recv[0]:
+            recv_array = self.conn.recv(1024)
+        while not done:
+            #print 'len recv: ', len(recv_array)
+            if (len(recv_array) < 6):    
+                if self.ready_to_recv[0]:
+                    recv_array += self.conn.recv(1024)
+            elif (len(recv_array) < ( ord(recv_array[3])) + 4 ):
+                if self.ready_to_recv[0]:
+                    a = [ord(i) for i in recv_array]
+                    print 'recv_array in + 4: ', a
+                    recv_array += self.conn.recv(1024)
+                
+            else:
+                print 'ord(recv_array[3]): ', ord(recv_array[3])
+                done = True
+            #print recv_array
+        recv_array = [ord(i) for i in recv_array]
+        print recv_array
+        return recv_array  
 
 
 

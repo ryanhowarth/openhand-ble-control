@@ -17,5 +17,8 @@ openhand-software-master/nanokontrol.py
 openhand-software-master/openhand.pyc
 openhand-software-master/test_main.py
 
+
+*.pyc
+*.bin
 *.swp
 *.lprof

@@ -11,7 +11,6 @@ Connect your computer to the same network and note your computer's local IP Addr
 
 ### Usage
 Start the TCP Socket Server by running the following python script. Next, turn on the Photon. The Photon should connect to the TCP Server shortly after booting. If the Photon starts blinking red, it has failed to connect to the server and will try again shortly.
-
 
 ```shell
 python openhand_control.py

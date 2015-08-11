@@ -78,7 +78,7 @@ void loop() {
   //RFduino_ULPDelay( SECONDS(1) );
 }
 
-//Monitors position and/or load on the hand while the hand is closing or opening. 
+//Monitors position and/or load on the hand while the hand is closing or opening. (Not currently used.)
 void control_loop()
 {
   while (closing)
@@ -93,7 +93,7 @@ void control_loop()
       int speed_val = get_value(dataRead);
       if (speed_val < 5)
       {
-        digitalWrite(debugtwo, !digitalRead(debugtwo));
+        get_encoder_value();
         closing = false;
       }
       else if (speed_val > 5) {
@@ -155,16 +155,13 @@ void RFduinoBLE_onReceive(char *data, int len)
     hex_byte[i] = '\x00' + int(data[i]);
   }
 
-  if (int(data[5]) == 71) {
-    enable_torque_mode();
-    delay(250);
+  //Not used. (For monitoring speed/ load while closing)
+  if (int(data[5]) == -1) {
+    //enable_torque_mode();
     send_to_servo(hex_byte, len);
-    delay(250);
-    disable_torque_mode();    
-    digitalWrite(debug, HIGH);
-    //closing = true;
-
-    //digitalWrite(debug, HIGH);
+    delay(25);
+    set_moving_speed();
+    closing = true;
   }
   else
   {
@@ -172,6 +169,7 @@ void RFduinoBLE_onReceive(char *data, int len)
   }
 }
 
+/Sends hexadecimal packets to the servo.
 void send_to_servo(byte *data, int len)
 {
   digitalWrite(txrx_pin, HIGH); //Switch to TX mode before sending data
@@ -183,6 +181,9 @@ void send_to_servo(byte *data, int len)
   delayMicroseconds(1200); //Allow last bit to go through before switching to RX (at 9600 baud)
   digitalWrite(txrx_pin, LOW);
 }
+
+
+
 
 void check_load()
 {
@@ -196,6 +197,7 @@ void check_speed()
   send_to_servo(speed_packet, sizeof(speed_packet) / sizeof(byte) );
 }
 
+
 void enable_torque_mode()
 {
   byte torque_packet[] = {'\xff', '\xff', '\x01', '\x04', '\x03', '\x46', '\x01', '\xAD'};
@@ -207,7 +209,6 @@ void disable_torque_mode()
   byte torque_packet[] = {'\xff', '\xff', '\x01', '\x04', '\x03', '\x46', '\x00', '\xAE'};
   send_to_servo(torque_packet, sizeof(torque_packet) / sizeof(byte) );
 }
-
 
 //Not Tested
 int calc_checksum(byte msg[])
